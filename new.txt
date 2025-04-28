@@ -1,0 +1,156 @@
+User.cs
+public class User
+{
+    public int Id{get;set;}
+    public string Email{get;set;}
+    public string Password{get;set;}
+    public bool IsEmailVerified{get;set;}
+    public string VerificationToken{get;set;}
+
+}
+
+EmailService.cs
+using MimeKit;
+using MailKit.Net.Smtp;
+using System.Threading.Tasks;
+public class EmailService
+{
+   private readonly string _smtpHost = "smtp.your-email-provider.com";  // Change this to your SMTP host
+   private readonly int _smtpPort = 587;  // Typically 587 for TLS
+   private readonly string _smtpUser = "your-email@example.com";  // Your email address
+   private readonly string _smtpPassword = "your-email-password";  // Your email password
+   public async Task SendEmailAsync(string recipientEmail, string subject, string body)
+   {
+       var message = new MimeMessage();
+       message.From.Add(new MailboxAddress("Stock Portfolio Tracker", _smtpUser));
+       message.To.Add(new MailboxAddress(recipientEmail));
+       message.Subject = subject;
+       var bodyBuilder = new BodyBuilder { HtmlBody = body };
+       message.Body = bodyBuilder.ToMessageBody();
+       using (var client = new SmtpClient())
+       {
+           await client.ConnectAsync(_smtpHost, _smtpPort, false);
+           await client.AuthenticateAsync(_smtpUser, _smtpPassword);
+           await client.SendAsync(message);
+           await client.DisconnectAsync(true);
+       }
+   }
+}
+
+Userservice.cs
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+public class UserService
+{
+   private readonly List<User> _users = new List<User>();  // You will use a database instead in real apps
+   private readonly EmailService _emailService;
+   public UserService(EmailService emailService)
+   {
+       _emailService = emailService;
+   }
+   public async Task<User> RegisterUserAsync(string email, string password)
+   {
+       // Check if the user already exists
+       if (_users.Any(u => u.Email == email))
+           throw new Exception("User already exists.");
+       var verificationToken = Guid.NewGuid().ToString();
+       var newUser = new User
+       {
+           Id = _users.Count + 1,
+           Email = email,
+           Password = password,
+           IsEmailVerified = false,
+           VerificationToken = verificationToken
+       };
+       _users.Add(newUser);
+       // Send the verification email
+       var verificationLink = $"http://localhost:5000/api/auth/verify-email?token={verificationToken}";
+       var emailBody = $"<h3>Verify your email address</h3><p>Please click the link below to verify your email:</p><p><a href='{verificationLink}'>Verify Email</a></p>";
+       await _emailService.SendEmailAsync(email, "Email Verification", emailBody);
+       return newUser;
+   }
+   public User VerifyEmail(string token)
+   {
+       var user = _users.FirstOrDefault(u => u.VerificationToken == token);
+       if (user == null)
+           throw new Exception("Invalid verification token.");
+       user.IsEmailVerified = true;
+       user.VerificationToken = null;  // Invalidate the token after use
+       return user;
+   }
+}
+
+AuthController.cs
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
+[Route("api/auth")]
+[ApiController]
+public class AuthController : ControllerBase
+{
+   private readonly UserService _userService;
+   public AuthController(UserService userService)
+   {
+       _userService = userService;
+   }
+   [HttpPost("register")]
+   public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+   {
+       var user = await _userService.RegisterUserAsync(request.Email, request.Password);
+       return Ok(new { message = "Registration successful. Please check your email for verification." });
+   }
+   [HttpGet("verify-email")]
+   public IActionResult VerifyEmail([FromQuery] string token)
+   {
+       try
+       {
+           var user = _userService.VerifyEmail(token);
+           return Ok(new { message = "Email successfully verified." });
+       }
+       catch (Exception ex)
+       {
+           return BadRequest(new { message = ex.Message });
+       }
+   }
+}
+public class RegisterRequest
+{
+   public string Email { get; set; }
+   public string Password { get; set; }
+}
+
+Program.cs
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<EmailService>();  // Register EmailService
+builder.Services.AddSingleton<UserService>();   // Register UserService
+builder.Services.AddControllers();
+var app = builder.Build();
+app.UseAuthorization();
+app.MapControllers();
+app.Run();
+
+EmailVerification.http
+@EmailVerification_HostAddress = http://localhost:5104
+
+GET {{EmailVerification_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+EmailVerification.csproj
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mailkit" Version="4.11.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.15" />
+    <PackageReference Include="MimeKit" Version="4.11.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+</Project>
