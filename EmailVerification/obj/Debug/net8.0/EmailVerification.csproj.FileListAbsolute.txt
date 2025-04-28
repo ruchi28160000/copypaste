@@ -1,0 +1,7 @@
+C:\Users\ruchitha.j\EmailVerification\obj\Debug\net8.0\EmailVerification.csproj.AssemblyReference.cache
+C:\Users\ruchitha.j\EmailVerification\obj\Debug\net8.0\EmailVerification.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ruchitha.j\EmailVerification\obj\Debug\net8.0\EmailVerification.AssemblyInfoInputs.cache
+C:\Users\ruchitha.j\EmailVerification\obj\Debug\net8.0\EmailVerification.AssemblyInfo.cs
+C:\Users\ruchitha.j\EmailVerification\obj\Debug\net8.0\EmailVerification.csproj.CoreCompileInputs.cache
+C:\Users\ruchitha.j\EmailVerification\obj\Debug\net8.0\EmailVerification.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\ruchitha.j\EmailVerification\obj\Debug\net8.0\EmailVerification.MvcApplicationPartsAssemblyInfo.cache
